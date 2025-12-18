@@ -107,6 +107,69 @@ After rebooting, verify the service is running:
 sudo systemctl status gpu-fan-control.service
 ```
 
+## Setting GPU Power Limits on Startup
+
+For systems with multiple GPUs (like 8x RTX 3090), you may want to set power limits automatically on system startup to ensure consistent performance and thermal management. This can be achieved using a systemd service.
+
+### Example: 8x RTX 3090 Power Limit Service
+
+1. **Create the power limit service file:**
+```bash
+sudo nano /etc/systemd/system/gpu-power-limit.service
+```
+
+2. **Paste the following content into the file:**
+```ini
+[Unit]
+Description=Set NVIDIA GPU Power Limit
+After=network.target multi-user.target graphical.target
+Wants=nvidia-persistenced.service
+# Ensure nvidia-persistenced is started if you use it
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/usr/bin/nvidia-smi -pm 1
+# Enable persistence mode for all GPUs
+ExecStart=/usr/bin/nvidia-smi -i 0 -pl 280
+ExecStart=/usr/bin/nvidia-smi -i 1 -pl 280
+ExecStart=/usr/bin/nvidia-smi -i 2 -pl 280
+ExecStart=/usr/bin/nvidia-smi -i 3 -pl 280
+ExecStart=/usr/bin/nvidia-smi -i 4 -pl 280
+ExecStart=/usr/bin/nvidia-smi -i 5 -pl 280
+ExecStart=/usr/bin/nvidia-smi -i 6 -pl 280
+ExecStart=/usr/bin/nvidia-smi -i 7 -pl 280
+# Add more ExecStart lines for additional GPUs (e.g., -i 2, -i 3, etc.)
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3. **Enable and start the service:**
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable gpu-power-limit.service
+sudo systemctl start gpu-power-limit.service
+```
+
+4. **Verify the power limits:**
+```bash
+nvidia-smi -q | grep "Power Limit"
+```
+
+### Customizing for Your Setup
+
+- **Power Limit Value**: The example uses `280` watts, which is typical for RTX 3090. Adjust this value based on your GPU model and requirements.
+- **GPU Count**: Modify the number of `ExecStart` lines to match your GPU count.
+- **GPU Indices**: Ensure the GPU indices (`-i 0`, `-i 1`, etc.) match your actual GPU configuration.
+
+### Important Notes
+
+- This service sets power limits to 280W for each GPU, which is common for RTX 3090 cards
+- The `ExecStartPre=/usr/bin/nvidia-smi -pm 1` line enables persistence mode for better performance
+- Power limits are applied before the fan control service starts, ensuring optimal thermal management
+- Adjust the power limit value according to your specific GPU model and power supply capabilities
+
 ## Fan Curve
 
 The script uses the following temperature-to-fan-speed mapping:
